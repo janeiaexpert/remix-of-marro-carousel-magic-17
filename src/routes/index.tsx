@@ -235,18 +235,16 @@ function Index() {
       const nodes = cardRefs.current.filter(Boolean) as HTMLDivElement[];
       if (!nodes.length) throw new Error("Nada para exportar");
       const targets = all ? nodes : [nodes[0]!];
+      const fontEmbedCSS = await getFontEmbedCSS();
       const pngs: { name: string; data: string }[] = [];
       for (let i = 0; i < targets.length; i++) {
+        const opts = { width: CARD_W, height: CARD_H, pixelRatio: 1, fontEmbedCSS };
         // duas passadas: garante fontes/imagens carregadas no snapshot
-        await toPng(targets[i]!, { width: CARD_W, height: CARD_H, pixelRatio: 1 });
-        const dataUrl = await toPng(targets[i]!, {
-          width: CARD_W,
-          height: CARD_H,
-          pixelRatio: 1,
-          cacheBust: true,
-        });
+        await toPng(targets[i]!, opts);
+        const dataUrl = await toPng(targets[i]!, opts);
         pngs.push({ name: `card-${String(i + 1).padStart(2, "0")}.png`, data: dataUrl });
       }
+
 
       if (pngs.length === 1) {
         const a = document.createElement("a");
