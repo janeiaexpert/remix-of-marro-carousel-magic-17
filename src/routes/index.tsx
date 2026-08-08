@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import { getFontEmbedCSS } from "@/lib/font-embed";
+
 import JSZip from "jszip";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
