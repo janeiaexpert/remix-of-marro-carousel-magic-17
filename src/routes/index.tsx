@@ -441,21 +441,21 @@ function Index() {
           <Carousel opts={{ align: "start" }} className="w-full">
             <CarouselContent className="-ml-4">
               {slides.map((s, i) => (
-                <CarouselItem key={i} className="basis-[80%] pl-4 sm:basis-1/2 xl:basis-1/2">
+                <CarouselItem key={i} className="basis-auto pl-4">
                   <div className="space-y-2">
                     <div
-                      className="relative w-full overflow-hidden border border-border"
-                      style={{ aspectRatio: "4 / 5" }}
+                      className="relative overflow-hidden border border-border"
+                      style={{ width: 300, height: 375 }}
                     >
                       <div
                         className="absolute left-0 top-0 origin-top-left"
                         style={{
                           width: CARD_W,
                           height: CARD_H,
-                          transform: "scale(var(--card-scale))",
-                          ["--card-scale" as string]: "0.28",
+                          transform: `scale(${300 / CARD_W})`,
                         }}
                       >
+
                         <div ref={(el) => { cardRefs.current[i] = el; }}>
                           <SlideCard
                             slide={s}
