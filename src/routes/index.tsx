@@ -143,7 +143,7 @@ async function callAgent(payload: Record<string, unknown>) {
 
 function Index() {
   const [topic, setTopic] = useState("");
-  const [niche, setNiche] = useState(NICHES[0]);
+  const [niche, setNiche] = useState<string>(NICHES[0]!);
   const [brand, setBrand] = useState("REVISTA");
   const [themeIdx, setThemeIdx] = useState(0);
   const [custom, setCustom] = useState<CardTheme | null>(null);
@@ -153,7 +153,7 @@ function Index() {
   const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState<Stage | "imagem" | "export" | null>(null);
 
-  const theme = custom ?? THEMES[themeIdx].theme;
+  const theme = custom ?? THEMES[themeIdx]!.theme;
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   function patchTheme(patch: Partial<CardTheme>) {
@@ -234,12 +234,12 @@ function Index() {
     try {
       const nodes = cardRefs.current.filter(Boolean) as HTMLDivElement[];
       if (!nodes.length) throw new Error("Nada para exportar");
-      const targets = all ? nodes : [nodes[0]];
+      const targets = all ? nodes : [nodes[0]!];
       const pngs: { name: string; data: string }[] = [];
       for (let i = 0; i < targets.length; i++) {
         // duas passadas: garante fontes/imagens carregadas no snapshot
-        await toPng(targets[i], { width: CARD_W, height: CARD_H, pixelRatio: 1 });
-        const dataUrl = await toPng(targets[i], {
+        await toPng(targets[i]!, { width: CARD_W, height: CARD_H, pixelRatio: 1 });
+        const dataUrl = await toPng(targets[i]!, {
           width: CARD_W,
           height: CARD_H,
           pixelRatio: 1,
@@ -250,12 +250,12 @@ function Index() {
 
       if (pngs.length === 1) {
         const a = document.createElement("a");
-        a.href = pngs[0].data;
-        a.download = pngs[0].name;
+        a.href = pngs[0]!.data;
+        a.download = pngs[0]!.name;
         a.click();
       } else {
         const zip = new JSZip();
-        for (const p of pngs) zip.file(p.name, p.data.split(",")[1], { base64: true });
+        for (const p of pngs) zip.file(p.name, p.data.split(",")[1]!, { base64: true });
         const blob = await zip.generateAsync({ type: "blob" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
