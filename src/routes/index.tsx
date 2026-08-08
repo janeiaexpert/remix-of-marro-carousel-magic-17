@@ -1,4 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRef, useState } from "react";
+import { toPng } from "html-to-image";
+import JSZip from "jszip";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Carousel,
   CarouselContent,
@@ -6,21 +22,23 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { SlideCard, CARD_W, CARD_H, type Slide, type CardTheme } from "@/components/SlideCard";
+import { Loader2, Download, Upload, Sparkles, Search, Wand2, CheckCheck, Send } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Carrosséis por Nicho | Templates prontos" },
+      { title: "Esteira de Carrossel | Pesquisa, cria, revisa e exporta PNG" },
       {
         name: "description",
         content:
-          "Templates de carrossel para Instagram organizados por nicho: fitness, estética, nutrição, imobiliária, marketing e notícias.",
+          "Esteira com agentes de IA que pesquisam, criam, revisam e preparam carrosséis 4:5 com capa estilo revista e exportação em PNG.",
       },
-      { property: "og:title", content: "Carrosséis por Nicho | Templates prontos" },
+      { property: "og:title", content: "Esteira de Carrossel com agentes de IA" },
       {
         property: "og:description",
         content:
-          "Escolha o nicho, gere o carrossel e baixe em PNG. Design em marrom, preto e branco.",
+          "Gere carrosséis 4:5 prontos para postar: conteúdo, imagem de capa, cores, marcador de palavras e export PNG.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -29,126 +47,471 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const niches = [
+const NICHES = [
+  "Academia / Fitness",
+  "Clínica de Estética",
+  "Nutricionista",
+  "Imobiliária",
+  "Marketing Digital",
+  "Notícias",
+  "Advocacia",
+  "Barbearia",
+];
+
+const THEMES: { name: string; theme: CardTheme }[] = [
   {
-    tag: "01",
-    niche: "Academia / Fitness",
-    headline: "Você não precisa de mais motivação. Precisa de um plano.",
-    sub: "O treino de 45 minutos que cabe na sua rotina.",
+    name: "Preto / Marrom",
+    theme: {
+      bg: "#121110",
+      text: "#F5F1EA",
+      highlight: "#7A4A24",
+      highlightText: "#FFFFFF",
+      accent: "#B87333",
+    },
   },
   {
-    tag: "02",
-    niche: "Clínica de Estética",
-    headline: "Harmonização não é exagero. É equilíbrio.",
-    sub: "O que avaliar antes de fechar seu procedimento.",
+    name: "Branco / Marrom",
+    theme: {
+      bg: "#F5F1EA",
+      text: "#121110",
+      highlight: "#7A4A24",
+      highlightText: "#F5F1EA",
+      accent: "#3A2A1E",
+    },
   },
   {
-    tag: "03",
-    niche: "Nutricionista",
-    headline: "Comer bem não é comer menos.",
-    sub: "Os 3 ajustes no prato que mudam sua energia na primeira semana.",
+    name: "Marrom sólido",
+    theme: {
+      bg: "#4A2F1C",
+      text: "#F5F1EA",
+      highlight: "#F5F1EA",
+      highlightText: "#4A2F1C",
+      accent: "#C9A227",
+    },
   },
   {
-    tag: "04",
-    niche: "Imobiliária",
-    headline: "O erro que faz você pagar caro no primeiro imóvel.",
-    sub: "Confira isso antes de assinar qualquer contrato.",
-  },
-  {
-    tag: "05",
-    niche: "Marketing",
-    headline: "Seu conteúdo não vende porque ninguém para no primeiro card.",
-    sub: "O ajuste que dobra o retorno antes de aumentar o orçamento.",
-  },
-  {
-    tag: "06",
-    niche: "Notícias",
-    headline: "A decisão que mexe com o bolso de todo brasileiro.",
-    sub: "O que muda a partir da próxima semana.",
+    name: "Preto / Branco",
+    theme: {
+      bg: "#0B0B0B",
+      text: "#FFFFFF",
+      highlight: "#FFFFFF",
+      highlightText: "#0B0B0B",
+      accent: "#8C8C8C",
+    },
   },
 ];
 
+const DEFAULT_SLIDES: Slide[] = [
+  {
+    kicker: "Edição 01",
+    title: "O post que **para o dedo**",
+    body: "",
+  },
+  {
+    kicker: "Contexto",
+    title: "Ninguém para no **card 1**",
+    body: "Sem capa forte, o resto do carrossel não existe. Comece pelo impacto visual.",
+  },
+  {
+    kicker: "Método",
+    title: "Uma ideia **por card**",
+    body: "Cada card entrega um único argumento. Simples de ler, fácil de arrastar.",
+  },
+  {
+    kicker: "Ação",
+    title: "Feche com **CTA claro**",
+    body: "Diga exatamente o que a pessoa deve fazer agora: salvar, comentar ou chamar no direct.",
+  },
+];
+
+type Stage = "pesquisar" | "criar" | "revisar" | "postar";
+
+async function callAgent(payload: Record<string, unknown>) {
+  const res = await fetch("/api/agents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    if (res.status === 429) throw new Error("Limite de requisições atingido. Tente em instantes.");
+    if (res.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos.");
+    throw new Error(text || "Falha no agente");
+  }
+  return res.json();
+}
+
 function Index() {
+  const [topic, setTopic] = useState("");
+  const [niche, setNiche] = useState(NICHES[0]);
+  const [brand, setBrand] = useState("REVISTA");
+  const [themeIdx, setThemeIdx] = useState(0);
+  const [custom, setCustom] = useState<CardTheme | null>(null);
+  const [slides, setSlides] = useState<Slide[]>(DEFAULT_SLIDES);
+  const [image, setImage] = useState<string | null>(null);
+  const [research, setResearch] = useState("");
+  const [caption, setCaption] = useState("");
+  const [loading, setLoading] = useState<Stage | "imagem" | "export" | null>(null);
+
+  const theme = custom ?? THEMES[themeIdx].theme;
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  function patchTheme(patch: Partial<CardTheme>) {
+    setCustom({ ...theme, ...patch });
+  }
+
+  async function run(stage: Stage) {
+    if (stage !== "postar" && stage !== "revisar" && !topic.trim()) {
+      toast.error("Escreva o tema do carrossel");
+      return;
+    }
+    setLoading(stage);
+    try {
+      const data = await callAgent({
+        stage,
+        topic,
+        niche,
+        research,
+        slides,
+        slideCount: 6,
+      });
+
+      if (stage === "pesquisar") {
+        const txt = `${data.resumo}\n\nÂngulos: ${(data.angulos || []).join(" | ")}`;
+        setResearch(txt);
+        toast.success("Pesquisa concluída");
+      } else if (stage === "criar") {
+        setSlides(data.slides || []);
+        if (data.legenda)
+          setCaption(`${data.legenda}\n\n${(data.hashtags || []).join(" ")}`);
+        if (data.promptImagem) await generateImage(data.promptImagem);
+        toast.success("Carrossel criado");
+      } else if (stage === "revisar") {
+        setSlides(data.slides || slides);
+        toast.success("Revisado e desenferrujado");
+      } else {
+        setCaption(
+          `${data.legenda}\n\n${(data.hashtags || []).join(" ")}\n\nMelhor horário: ${data.melhorHorario}\n1º comentário: ${data.primeiroComentario}`,
+        );
+        toast.success("Pacote de publicação pronto");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro inesperado");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function generateImage(prompt?: string) {
+    const p = prompt || `${topic} — ${niche}`;
+    setLoading("imagem");
+    try {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: p }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { image: string };
+      setImage(data.image);
+      toast.success("Imagem de capa gerada");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar imagem");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  function onUpload(file?: File) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  async function exportPng(all: boolean) {
+    setLoading("export");
+    try {
+      const nodes = cardRefs.current.filter(Boolean) as HTMLDivElement[];
+      if (!nodes.length) throw new Error("Nada para exportar");
+      const targets = all ? nodes : [nodes[0]];
+      const pngs: { name: string; data: string }[] = [];
+      for (let i = 0; i < targets.length; i++) {
+        // duas passadas: garante fontes/imagens carregadas no snapshot
+        await toPng(targets[i], { width: CARD_W, height: CARD_H, pixelRatio: 1 });
+        const dataUrl = await toPng(targets[i], {
+          width: CARD_W,
+          height: CARD_H,
+          pixelRatio: 1,
+          cacheBust: true,
+        });
+        pngs.push({ name: `card-${String(i + 1).padStart(2, "0")}.png`, data: dataUrl });
+      }
+
+      if (pngs.length === 1) {
+        const a = document.createElement("a");
+        a.href = pngs[0].data;
+        a.download = pngs[0].name;
+        a.click();
+      } else {
+        const zip = new JSZip();
+        for (const p of pngs) zip.file(p.name, p.data.split(",")[1], { base64: true });
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "carrossel-png.zip";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success("PNG exportado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha no export");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  const busy = loading !== null;
+
   return (
     <main className="min-h-screen bg-background font-sans text-foreground">
+      <Toaster position="top-center" />
+
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
           <span className="font-display text-2xl tracking-wide">
-            CARROSSEL<span className="text-primary">.</span>NICHO
+            ESTEIRA<span className="text-primary">.</span>CARROSSEL
           </span>
-          <span className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-            Marrom · Preto · Branco
+          <span className="hidden text-[11px] uppercase tracking-[0.25em] text-muted-foreground sm:block">
+            4:5 · 1080×1350 · PNG
           </span>
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-5 pt-12 pb-8">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-primary">
-          Templates por nicho
-        </p>
-        <h1 className="mt-3 max-w-3xl font-display text-5xl leading-[0.95] tracking-tight sm:text-7xl">
-          Escolha o nicho.
-          <br />
-          O carrossel já vem pronto.
-        </h1>
-        <p className="mt-5 max-w-xl text-sm text-muted-foreground">
-          Seis modelos editoriais, tipografia nítida e capa de impacto. Arraste para
-          navegar entre os nichos.
-        </p>
-      </section>
+      <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[380px_1fr]">
+        {/* Painel */}
+        <section className="space-y-6">
+          <div className="space-y-3">
+            <h1 className="font-display text-4xl leading-none">
+              Conteúdo, capa e PNG prontos para postar
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Agentes que pesquisam, criam, revisam e montam o pacote de publicação.
+            </p>
+          </div>
 
-      <section className="mx-auto max-w-6xl px-5 pb-20">
-        <Carousel opts={{ align: "start" }} className="w-full">
-          <CarouselContent className="-ml-4">
-            {niches.map((item) => (
-              <CarouselItem
-                key={item.tag}
-                className="basis-[85%] pl-4 sm:basis-1/2 lg:basis-1/3"
+          <div className="space-y-2">
+            <Label>Nicho</Label>
+            <Select value={niche} onValueChange={setNiche}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NICHES.map((n) => (
+                  <SelectItem key={n} value={n}>
+                    {n}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tema do carrossel</Label>
+            <Textarea
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="Ex: 3 erros que travam o emagrecimento depois dos 30"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Marca / masthead</Label>
+            <Input value={brand} onChange={(e) => setBrand(e.target.value.toUpperCase())} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => run("pesquisar")}>
+              {loading === "pesquisar" ? <Loader2 className="animate-spin" /> : <Search />}
+              Pesquisar
+            </Button>
+            <Button disabled={busy} onClick={() => run("criar")}>
+              {loading === "criar" ? <Loader2 className="animate-spin" /> : <Wand2 />}
+              Criar
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={() => run("revisar")}>
+              {loading === "revisar" ? <Loader2 className="animate-spin" /> : <CheckCheck />}
+              Revisar
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={() => run("postar")}>
+              {loading === "postar" ? <Loader2 className="animate-spin" /> : <Send />}
+              Postar
+            </Button>
+          </div>
+
+          {research ? (
+            <div className="border border-border bg-card p-3 text-xs leading-relaxed text-muted-foreground">
+              {research}
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label>Imagem da capa</Label>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                disabled={busy}
+                onClick={() => generateImage()}
               >
-                <article className="flex h-full flex-col border border-border bg-card">
-                  <div className="relative flex aspect-[4/5] flex-col justify-end bg-ink p-6 text-ink-foreground">
-                    <span className="absolute left-6 top-6 border border-ink-foreground/30 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-ink-foreground/70">
-                      {item.tag} / 06
-                    </span>
+                {loading === "imagem" ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                Gerar com IA
+              </Button>
+              <Button variant="outline" asChild className="flex-1">
+                <label className="cursor-pointer">
+                  <Upload />
+                  Subir imagem
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => onUpload(e.target.files?.[0])}
+                  />
+                </label>
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Paleta do card</Label>
+            <div className="grid grid-cols-4 gap-2">
+              {THEMES.map((t, i) => (
+                <button
+                  key={t.name}
+                  title={t.name}
+                  onClick={() => {
+                    setThemeIdx(i);
+                    setCustom(null);
+                  }}
+                  className={`h-10 border ${!custom && themeIdx === i ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
+                  style={{
+                    background: `linear-gradient(90deg, ${t.theme.bg} 60%, ${t.theme.accent} 60%)`,
+                  }}
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              {(
+                [
+                  ["Fundo", "bg"],
+                  ["Texto", "text"],
+                  ["Marcador", "highlight"],
+                  ["Texto marcado", "highlightText"],
+                  ["Detalhe", "accent"],
+                ] as const
+              ).map(([label, key]) => (
+                <label key={key} className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={theme[key]}
+                    onChange={(e) => patchTheme({ [key]: e.target.value })}
+                    className="h-8 w-10 cursor-pointer border border-border bg-transparent"
+                  />
+                  <span className="text-muted-foreground">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => exportPng(false)}>
+              <Download /> Só a capa
+            </Button>
+            <Button disabled={busy} onClick={() => exportPng(true)}>
+              {loading === "export" ? <Loader2 className="animate-spin" /> : <Download />}
+              Todos (.zip)
+            </Button>
+          </div>
+        </section>
+
+        {/* Preview */}
+        <section className="space-y-6">
+          <Carousel opts={{ align: "start" }} className="w-full">
+            <CarouselContent className="-ml-4">
+              {slides.map((s, i) => (
+                <CarouselItem key={i} className="basis-[80%] pl-4 sm:basis-1/2 xl:basis-1/2">
+                  <div className="space-y-2">
                     <div
-                      aria-hidden
-                      className="absolute inset-0 opacity-[0.35]"
-                      style={{
-                        background:
-                          "radial-gradient(120% 80% at 20% 0%, var(--accent), transparent 60%)",
-                      }}
-                    />
-                    <div className="relative">
-                      <h2 className="font-display text-3xl leading-[0.95] tracking-wide">
-                        {item.headline}
-                      </h2>
-                      <p className="mt-3 text-xs leading-relaxed text-ink-foreground/70">
-                        {item.sub}
-                      </p>
-                      <div className="mt-6 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-ink-foreground/60">
-                        <span>01/06</span>
-                        <span>Arrasta →</span>
+                      className="relative w-full overflow-hidden border border-border"
+                      style={{ aspectRatio: "4 / 5" }}
+                    >
+                      <div
+                        className="absolute left-0 top-0 origin-top-left"
+                        style={{
+                          width: CARD_W,
+                          height: CARD_H,
+                          transform: "scale(var(--card-scale))",
+                          ["--card-scale" as string]: "0.28",
+                        }}
+                      >
+                        <div ref={(el) => { cardRefs.current[i] = el; }}>
+                          <SlideCard
+                            slide={s}
+                            index={i}
+                            total={slides.length}
+                            theme={theme}
+                            image={image}
+                            brand={brand}
+                            isCover={i === 0}
+                          />
+                        </div>
                       </div>
                     </div>
+                    <Textarea
+                      rows={3}
+                      className="text-xs"
+                      value={`${s.kicker}\n${s.title}\n${s.body}`}
+                      onChange={(e) => {
+                        const [kicker = "", title = "", ...rest] = e.target.value.split("\n");
+                        const next = [...slides];
+                        next[i] = { kicker, title, body: rest.join(" ") };
+                        setSlides(next);
+                      }}
+                    />
                   </div>
-                  <div className="flex items-center justify-between border-t border-border px-5 py-4">
-                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                      {item.niche}
-                    </span>
-                    <span className="text-xs font-semibold text-primary">Usar</span>
-                  </div>
-                </article>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="hidden sm:flex" />
-          <CarouselNext className="hidden sm:flex" />
-        </Carousel>
-      </section>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden sm:flex" />
+            <CarouselNext className="hidden sm:flex" />
+          </Carousel>
+
+          <div className="space-y-2">
+            <Label>Legenda pronta para postar</Label>
+            <Textarea
+              rows={8}
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="Rode o agente Criar ou Postar para gerar a legenda."
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigator.clipboard.writeText(caption);
+                toast.success("Legenda copiada");
+              }}
+            >
+              Copiar legenda
+            </Button>
+          </div>
+        </section>
+      </div>
 
       <footer className="border-t border-border">
         <div className="mx-auto max-w-6xl px-5 py-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          Templates prontos para publicar
+          Capa estilo revista · marrom, preto e branco · export PNG 1080×1350
         </div>
       </footer>
     </main>
