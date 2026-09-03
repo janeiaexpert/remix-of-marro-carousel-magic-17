@@ -408,6 +408,31 @@ function Index() {
             />
           </div>
 
+          <div className="space-y-2 border border-border bg-card p-4">
+            <Label>Falar a ideia</Label>
+            <p className="text-xs text-muted-foreground">
+              Toque no microfone, fale o tema e a IA monta o carrossel inteiro + legenda com 5 hashtags.
+            </p>
+            <Button
+              className="w-full"
+              variant={recording ? "destructive" : "default"}
+              disabled={busy && !recording}
+              onClick={toggleMic}
+            >
+              {loading === "voz" ? (
+                <Loader2 className="animate-spin" />
+              ) : recording ? (
+                <Square />
+              ) : (
+                <Mic />
+              )}
+              {recording ? "Parar e gerar" : "Falar minha ideia"}
+            </Button>
+            {voiceStep ? (
+              <p className="text-xs uppercase tracking-[0.2em] text-primary">{voiceStep}</p>
+            ) : null}
+          </div>
+
           <div className="space-y-2">
             <Label>Marca / masthead</Label>
             <Input value={brand} onChange={(e) => setBrand(e.target.value.toUpperCase())} />
