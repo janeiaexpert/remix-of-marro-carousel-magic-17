@@ -25,7 +25,19 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { SlideCard, CARD_W, CARD_H, type Slide, type CardTheme } from "@/components/SlideCard";
-import { Loader2, Download, Upload, Sparkles, Search, Wand2, CheckCheck, Send } from "lucide-react";
+import { startRecording, type VoiceRecorder } from "@/lib/recorder";
+import {
+  Loader2,
+  Download,
+  Upload,
+  Sparkles,
+  Search,
+  Wand2,
+  CheckCheck,
+  Send,
+  Mic,
+  Square,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
