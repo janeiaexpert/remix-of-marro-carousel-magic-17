@@ -29,6 +29,7 @@ Responda JSON: {"resumo": string (até 400 caracteres), "angulos": string[5], "p
 Pesquisa: ${b.research || "(sem pesquisa)"}
 Crie um carrossel de ${b.slideCount || 6} cards. O card 1 é CAPA estilo revista (headline curtíssima e impactante, máx 6 palavras).
 Use **asteriscos duplos** ao redor de 1 a 3 palavras-chave que devem ser marcadas em cada título.
+Use //barras duplas// ao redor de 1 palavra por card (em alguns cards, não em todos) para virar uma palavra inclinada estilo colagem de revista. Nunca use as duas marcações na mesma palavra.
 Responda JSON:
 {"slides":[{"kicker": string curto (máx 3 palavras), "title": string, "body": string (até 160 caracteres, vazio na capa)}],
  "legenda": string (legenda pronta para postar com quebras de linha),
@@ -38,7 +39,7 @@ Responda JSON:
     case "revisar":
       return {
         system: base,
-        user: `AGENTE REVISOR. Revise ortografia, corte gordura, aumente clareza e força de copy. Mantenha a MESMA estrutura e quantidade de slides. Mantenha as marcações **palavra**.
+        user: `AGENTE REVISOR. Revise ortografia, corte gordura, aumente clareza e força de copy. Mantenha a MESMA estrutura e quantidade de slides. Mantenha as marcações **palavra** e //palavra//.
 Conteúdo atual: ${JSON.stringify(b.slides)}
 Responda JSON: {"slides":[{"kicker":string,"title":string,"body":string}], "notas": string[3]}`,
       };
