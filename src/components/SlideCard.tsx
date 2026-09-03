@@ -85,6 +85,7 @@ export function SlideCard({
   image,
   brand,
   isCover,
+  height = CARD_H,
 }: {
   slide: Slide;
   index: number;
@@ -93,12 +94,13 @@ export function SlideCard({
   image: string | null;
   brand: string;
   isCover: boolean;
+  height?: number;
 }) {
   return (
     <div
       style={{
         width: CARD_W,
-        height: CARD_H,
+        height,
         backgroundColor: theme.bg,
         color: theme.text,
         position: "relative",
