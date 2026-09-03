@@ -25,7 +25,19 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { SlideCard, CARD_W, CARD_H, type Slide, type CardTheme } from "@/components/SlideCard";
-import { Loader2, Download, Upload, Sparkles, Search, Wand2, CheckCheck, Send } from "lucide-react";
+import { startRecording, type VoiceRecorder } from "@/lib/recorder";
+import {
+  Loader2,
+  Download,
+  Upload,
+  Sparkles,
+  Search,
+  Wand2,
+  CheckCheck,
+  Send,
+  Mic,
+  Square,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -153,10 +165,91 @@ function Index() {
   const [image, setImage] = useState<string | null>(null);
   const [research, setResearch] = useState("");
   const [caption, setCaption] = useState("");
-  const [loading, setLoading] = useState<Stage | "imagem" | "export" | null>(null);
+  const [loading, setLoading] = useState<Stage | "imagem" | "export" | "voz" | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [voiceStep, setVoiceStep] = useState("");
+  const recorderRef = useRef<VoiceRecorder | null>(null);
 
   const theme = custom ?? THEMES[themeIdx]!.theme;
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  async function toggleMic() {
+    if (recording) {
+      setRecording(false);
+      const rec = recorderRef.current;
+      recorderRef.current = null;
+      if (!rec) return;
+      setLoading("voz");
+      setVoiceStep("Transcrevendo sua ideia…");
+      try {
+        const blob = await rec.stop();
+        if (blob.size < 2048) throw new Error("Gravação vazia. Fale mais um pouco.");
+        const fd = new FormData();
+        fd.append("file", blob, "recording.wav");
+        const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+        if (!res.ok) throw new Error((await res.text()) || "Falha na transcrição");
+        const { text } = (await res.json()) as { text: string };
+        if (!text.trim()) throw new Error("Não entendi o áudio. Tente de novo.");
+        setTopic(text.trim());
+        await autoPipeline(text.trim());
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Erro no microfone");
+        setLoading(null);
+      } finally {
+        setVoiceStep("");
+      }
+      return;
+    }
+    try {
+      recorderRef.current = await startRecording();
+      setRecording(true);
+      toast.success("Gravando… fale sua ideia e toque para parar");
+    } catch {
+      toast.error("Permita o acesso ao microfone para usar a voz");
+    }
+  }
+
+  async function autoPipeline(spokenTopic: string) {
+    setLoading("voz");
+    try {
+      setVoiceStep("Pesquisando o tema…");
+      const r = await callAgent({ stage: "pesquisar", topic: spokenTopic, niche });
+      const researchTxt = `${r.resumo}\n\nÂngulos: ${(r.angulos || []).join(" | ")}`;
+      setResearch(researchTxt);
+
+      setVoiceStep("Criando os cards…");
+      const c = await callAgent({
+        stage: "criar",
+        topic: spokenTopic,
+        niche,
+        research: researchTxt,
+        slideCount: 6,
+      });
+      const newSlides: Slide[] = c.slides || [];
+      setSlides(newSlides);
+
+      setVoiceStep("Revisando a copy…");
+      const rev = await callAgent({ stage: "revisar", topic: spokenTopic, niche, slides: newSlides });
+      const finalSlides: Slide[] = rev.slides || newSlides;
+      setSlides(finalSlides);
+
+      setVoiceStep("Montando legenda e hashtags…");
+      const p = await callAgent({ stage: "postar", topic: spokenTopic, niche, slides: finalSlides });
+      const tags = (p.hashtags || c.hashtags || []).slice(0, 5).join(" ");
+      setCaption(`${p.legenda || c.legenda || ""}\n\n${tags}`);
+
+      if (c.promptImagem) {
+        setVoiceStep("Gerando a capa…");
+        await generateImage(c.promptImagem);
+      }
+      toast.success("Carrossel pronto para postar");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro na esteira automática");
+    } finally {
+      setVoiceStep("");
+      setLoading(null);
+    }
+  }
 
   function patchTheme(patch: Partial<CardTheme>) {
     setCustom({ ...theme, ...patch });
@@ -325,6 +418,31 @@ function Index() {
               placeholder="Ex: 3 erros que travam o emagrecimento depois dos 30"
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2 border border-border bg-card p-4">
+            <Label>Falar a ideia</Label>
+            <p className="text-xs text-muted-foreground">
+              Toque no microfone, fale o tema e a IA monta o carrossel inteiro + legenda com 5 hashtags.
+            </p>
+            <Button
+              className="w-full"
+              variant={recording ? "destructive" : "default"}
+              disabled={busy && !recording}
+              onClick={toggleMic}
+            >
+              {loading === "voz" ? (
+                <Loader2 className="animate-spin" />
+              ) : recording ? (
+                <Square />
+              ) : (
+                <Mic />
+              )}
+              {recording ? "Parar e gerar" : "Falar minha ideia"}
+            </Button>
+            {voiceStep ? (
+              <p className="text-xs uppercase tracking-[0.2em] text-primary">{voiceStep}</p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
