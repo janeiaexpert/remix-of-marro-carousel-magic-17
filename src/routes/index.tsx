@@ -24,7 +24,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { SlideCard, CARD_W, CARD_H, type Slide, type CardTheme } from "@/components/SlideCard";
+import { SlideCard, CARD_W, CARD_H, RATIOS, type RatioKey, type Slide, type CardTheme } from "@/components/SlideCard";
 import { startRecording, type VoiceRecorder } from "@/lib/recorder";
 import {
   Loader2,
@@ -166,11 +166,15 @@ function Index() {
   const [research, setResearch] = useState("");
   const [caption, setCaption] = useState("");
   const [loading, setLoading] = useState<Stage | "imagem" | "export" | "voz" | null>(null);
+  const [ratio, setRatio] = useState<RatioKey>("4:5");
   const [recording, setRecording] = useState(false);
   const [voiceStep, setVoiceStep] = useState("");
   const recorderRef = useRef<VoiceRecorder | null>(null);
 
   const theme = custom ?? THEMES[themeIdx]!.theme;
+  const cardH = RATIOS[ratio].h;
+  const previewW = 300;
+  const previewH = Math.round((previewW / CARD_W) * cardH);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   async function toggleMic() {
@@ -333,7 +337,7 @@ function Index() {
       const fontEmbedCSS = await getFontEmbedCSS();
       const pngs: { name: string; data: string }[] = [];
       for (let i = 0; i < targets.length; i++) {
-        const opts = { width: CARD_W, height: CARD_H, pixelRatio: 1, fontEmbedCSS };
+        const opts = { width: CARD_W, height: cardH, pixelRatio: 1, fontEmbedCSS };
         // duas passadas: garante fontes/imagens carregadas no snapshot
         await toPng(targets[i]!, opts);
         const dataUrl = await toPng(targets[i]!, opts);
@@ -502,6 +506,21 @@ function Index() {
             </div>
           </div>
 
+          <div className="space-y-2">
+            <Label>Formato do card</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(RATIOS) as RatioKey[]).map((r) => (
+                <Button
+                  key={r}
+                  variant={ratio === r ? "default" : "outline"}
+                  onClick={() => setRatio(r)}
+                >
+                  {RATIOS[r].label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-3">
             <Label>Paleta do card</Label>
             <div className="grid grid-cols-4 gap-2">
@@ -563,14 +582,14 @@ function Index() {
                   <div className="space-y-2">
                     <div
                       className="relative overflow-hidden border border-border"
-                      style={{ width: 300, height: 375 }}
+                      style={{ width: previewW, height: previewH }}
                     >
                       <div
                         className="absolute left-0 top-0 origin-top-left"
                         style={{
                           width: CARD_W,
-                          height: CARD_H,
-                          transform: `scale(${300 / CARD_W})`,
+                          height: cardH,
+                          transform: `scale(${previewW / CARD_W})`,
                         }}
                       >
 
@@ -583,6 +602,7 @@ function Index() {
                             image={image}
                             brand={brand}
                             isCover={i === 0}
+                            height={cardH}
                           />
                         </div>
                       </div>
