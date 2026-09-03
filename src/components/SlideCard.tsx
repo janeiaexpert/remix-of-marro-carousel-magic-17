@@ -14,6 +14,11 @@ export type CardTheme = {
 
 export const CARD_W = 1080;
 export const CARD_H = 1350;
+export const RATIOS = {
+  "4:5": { w: 1080, h: 1350, label: "4:5" },
+  "3:4": { w: 1080, h: 1440, label: "3:4" },
+} as const;
+export type RatioKey = keyof typeof RATIOS;
 
 function Marked({
   text,
@@ -24,10 +29,31 @@ function Marked({
   theme: CardTheme;
   size: "big" | "small";
 }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  const parts = text.split(/(\*\*[^*]+\*\*|\/\/[^/]+\/\/)/g).filter(Boolean);
   return (
     <>
       {parts.map((part, i) => {
+        const tilt = part.match(/^\/\/([^/]+)\/\/$/);
+        if (tilt) {
+          return (
+            <span
+              key={i}
+              style={{
+                display: "inline-block",
+                fontStyle: "italic",
+                transform: `rotate(${i % 2 === 0 ? -3.5 : 3}deg)`,
+                backgroundColor: theme.accent,
+                color: theme.bg,
+                padding: size === "big" ? "2px 16px 10px" : "2px 10px 6px",
+                margin: "0 6px",
+                borderRadius: 3,
+                boxShadow: "6px 8px 0 rgba(0,0,0,0.25)",
+              }}
+            >
+              {tilt[1]}
+            </span>
+          );
+        }
         const m = part.match(/^\*\*([^*]+)\*\*$/);
         if (!m) return <span key={i}>{part}</span>;
         return (
@@ -49,6 +75,7 @@ function Marked({
     </>
   );
 }
+
 
 export function SlideCard({
   slide,
