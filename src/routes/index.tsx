@@ -400,7 +400,7 @@ function Index() {
 
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-6 sm:px-5 sm:py-8 lg:grid-cols-[380px_1fr]">
         {/* Painel */}
-        <section className="space-y-6">
+        <section className="min-w-0 space-y-6">
           <div className="space-y-3">
             <h1 className="font-display text-3xl leading-none sm:text-4xl">
               Conteúdo, capa e PNG prontos para postar
@@ -609,8 +609,8 @@ function Index() {
         </section>
 
         {/* Preview */}
-        <section className="space-y-6">
-          <Carousel opts={{ align: "start" }} className="w-full">
+        <section className="min-w-0 space-y-6">
+          <Carousel opts={{ align: "start" }} className="w-full max-w-full overflow-hidden">
             <CarouselContent className="-ml-4">
               {slides.map((s, i) => (
                 <CarouselItem key={i} className="basis-auto pl-4">
