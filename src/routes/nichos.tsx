@@ -66,11 +66,11 @@ function NichesPage() {
       <Toaster position="top-center" />
 
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-4">
-          <span className="font-display text-2xl tracking-wide">
+        <div className="mx-auto grid max-w-4xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 sm:px-5">
+          <span className="truncate font-display text-lg tracking-wide sm:text-2xl">
             NICHOS<span className="text-primary">.</span>PALAVRAS-CHAVE
           </span>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="shrink-0" asChild>
             <Link to="/">
               <ArrowLeft /> Voltar
             </Link>
@@ -78,9 +78,9 @@ function NichesPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl space-y-8 px-5 py-8">
+      <div className="mx-auto max-w-4xl space-y-8 px-4 py-6 sm:px-5 sm:py-8">
         <div className="space-y-2">
-          <h1 className="font-display text-4xl leading-none">
+          <h1 className="font-display text-3xl leading-none sm:text-4xl">
             Defina as palavras-chave de cada nicho
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -104,6 +104,7 @@ function NichesPage() {
                 <Button
                   variant="outline"
                   size="icon"
+                  className="shrink-0"
                   aria-label={`Remover nicho ${n.name}`}
                   onClick={() => setNiches((prev) => prev.filter((_, idx) => idx !== i))}
                 >
@@ -133,7 +134,7 @@ function NichesPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
           <Button
             variant="outline"
             onClick={() => setNiches((prev) => [...prev, { name: "", keywords: [] }])}

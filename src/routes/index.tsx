@@ -162,6 +162,14 @@ function Index() {
   const [recording, setRecording] = useState(false);
   const [voiceStep, setVoiceStep] = useState("");
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const [previewW, setPreviewW] = useState(300);
+
+  useEffect(() => {
+    const fit = () => setPreviewW(Math.max(220, Math.min(300, window.innerWidth - 72)));
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   useEffect(() => {
     const list = loadNiches();
@@ -176,7 +184,6 @@ function Index() {
 
   const theme = custom ?? THEMES[themeIdx]!.theme;
   const cardH = RATIOS[ratio].h;
-  const previewW = 300;
   const previewH = Math.round((previewW / CARD_W) * cardH);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -381,8 +388,8 @@ function Index() {
       <Toaster position="top-center" />
 
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-          <span className="font-display text-2xl tracking-wide">
+        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 sm:px-5">
+          <span className="truncate font-display text-xl tracking-wide sm:text-2xl">
             ESTEIRA<span className="text-primary">.</span>CARROSSEL
           </span>
           <span className="hidden text-[11px] uppercase tracking-[0.25em] text-muted-foreground sm:block">
@@ -391,11 +398,11 @@ function Index() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[380px_1fr]">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-6 sm:px-5 sm:py-8 lg:grid-cols-[380px_1fr]">
         {/* Painel */}
-        <section className="space-y-6">
+        <section className="min-w-0 space-y-6">
           <div className="space-y-3">
-            <h1 className="font-display text-4xl leading-none">
+            <h1 className="font-display text-3xl leading-none sm:text-4xl">
               Conteúdo, capa e PNG prontos para postar
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -482,7 +489,7 @@ function Index() {
             <Input value={brand} onChange={(e) => setBrand(e.target.value.toUpperCase())} />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
             <Button variant="outline" disabled={busy} onClick={() => run("pesquisar")}>
               {loading === "pesquisar" ? <Loader2 className="animate-spin" /> : <Search />}
               Pesquisar
@@ -536,7 +543,7 @@ function Index() {
 
           <div className="space-y-2">
             <Label>Formato do card</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
               {(Object.keys(RATIOS) as RatioKey[]).map((r) => (
                 <Button
                   key={r}
@@ -590,7 +597,7 @@ function Index() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-2">
             <Button variant="outline" disabled={busy} onClick={() => exportPng(false)}>
               <Download /> Só a capa
             </Button>
@@ -602,8 +609,8 @@ function Index() {
         </section>
 
         {/* Preview */}
-        <section className="space-y-6">
-          <Carousel opts={{ align: "start" }} className="w-full">
+        <section className="min-w-0 space-y-6">
+          <Carousel opts={{ align: "start" }} className="w-full max-w-full overflow-hidden">
             <CarouselContent className="-ml-4">
               {slides.map((s, i) => (
                 <CarouselItem key={i} className="basis-auto pl-4">
@@ -676,7 +683,7 @@ function Index() {
       </div>
 
       <footer className="border-t border-border">
-        <div className="mx-auto max-w-6xl px-5 py-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
           Capa estilo revista · marrom, preto e branco · export PNG 1080×1350
         </div>
       </footer>
