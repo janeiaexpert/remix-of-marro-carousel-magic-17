@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { getFontEmbedCSS } from "@/lib/font-embed";
 
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/carousel";
 import { SlideCard, CARD_W, CARD_H, RATIOS, type RatioKey, type Slide, type CardTheme } from "@/components/SlideCard";
 import { startRecording, type VoiceRecorder } from "@/lib/recorder";
+import { DEFAULT_NICHES, loadNiches, type Niche } from "@/lib/niches";
 import {
   Loader2,
   Download,
@@ -37,6 +38,7 @@ import {
   Send,
   Mic,
   Square,
+  Tags,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -60,17 +62,6 @@ export const Route = createFileRoute("/")({
   }),
   component: Index,
 });
-
-const NICHES = [
-  "Academia / Fitness",
-  "Clínica de Estética",
-  "Nutricionista",
-  "Imobiliária",
-  "Marketing Digital",
-  "Notícias",
-  "Advocacia",
-  "Barbearia",
-];
 
 const THEMES: { name: string; theme: CardTheme }[] = [
   {
@@ -157,7 +148,8 @@ async function callAgent(payload: Record<string, unknown>) {
 
 function Index() {
   const [topic, setTopic] = useState("");
-  const [niche, setNiche] = useState<string>(NICHES[0]!);
+  const [niches, setNiches] = useState<Niche[]>(DEFAULT_NICHES);
+  const [niche, setNiche] = useState<string>(DEFAULT_NICHES[0]!.name);
   const [brand, setBrand] = useState("REVISTA");
   const [themeIdx, setThemeIdx] = useState(0);
   const [custom, setCustom] = useState<CardTheme | null>(null);
@@ -170,6 +162,17 @@ function Index() {
   const [recording, setRecording] = useState(false);
   const [voiceStep, setVoiceStep] = useState("");
   const recorderRef = useRef<VoiceRecorder | null>(null);
+
+  useEffect(() => {
+    const list = loadNiches();
+    setNiches(list);
+    setNiche((cur) => (list.some((n) => n.name === cur) ? cur : list[0]!.name));
+  }, []);
+
+  const keywords = useMemo(
+    () => niches.find((n) => n.name === niche)?.keywords ?? [],
+    [niches, niche],
+  );
 
   const theme = custom ?? THEMES[themeIdx]!.theme;
   const cardH = RATIOS[ratio].h;
@@ -217,7 +220,7 @@ function Index() {
     setLoading("voz");
     try {
       setVoiceStep("Pesquisando o tema…");
-      const r = await callAgent({ stage: "pesquisar", topic: spokenTopic, niche });
+      const r = await callAgent({ stage: "pesquisar", topic: spokenTopic, niche, keywords });
       const researchTxt = `${r.resumo}\n\nÂngulos: ${(r.angulos || []).join(" | ")}`;
       setResearch(researchTxt);
 
@@ -226,6 +229,7 @@ function Index() {
         stage: "criar",
         topic: spokenTopic,
         niche,
+        keywords,
         research: researchTxt,
         slideCount: 6,
       });
@@ -233,12 +237,12 @@ function Index() {
       setSlides(newSlides);
 
       setVoiceStep("Revisando a copy…");
-      const rev = await callAgent({ stage: "revisar", topic: spokenTopic, niche, slides: newSlides });
+      const rev = await callAgent({ stage: "revisar", topic: spokenTopic, niche, keywords, slides: newSlides });
       const finalSlides: Slide[] = rev.slides || newSlides;
       setSlides(finalSlides);
 
       setVoiceStep("Montando legenda e hashtags…");
-      const p = await callAgent({ stage: "postar", topic: spokenTopic, niche, slides: finalSlides });
+      const p = await callAgent({ stage: "postar", topic: spokenTopic, niche, keywords, slides: finalSlides });
       const tags = (p.hashtags || c.hashtags || []).slice(0, 5).join(" ");
       setCaption(`${p.legenda || c.legenda || ""}\n\n${tags}`);
 
@@ -270,6 +274,7 @@ function Index() {
         stage,
         topic,
         niche,
+        keywords,
         research,
         slides,
         slideCount: 6,
@@ -302,7 +307,7 @@ function Index() {
   }
 
   async function generateImage(prompt?: string) {
-    const p = prompt || `${topic} — ${niche}`;
+    const p = prompt || `${topic} — ${niche} — ${keywords.join(", ")}`;
     setLoading("imagem");
     try {
       const res = await fetch("/api/generate-image", {
@@ -399,19 +404,42 @@ function Index() {
           </div>
 
           <div className="space-y-2">
-            <Label>Nicho</Label>
+            <div className="flex items-center justify-between">
+              <Label>Nicho</Label>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/nichos">
+                  <Tags /> Palavras-chave
+                </Link>
+              </Button>
+            </div>
             <Select value={niche} onValueChange={setNiche}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {NICHES.map((n) => (
-                  <SelectItem key={n} value={n}>
-                    {n}
+                {niches.map((n) => (
+                  <SelectItem key={n.name} value={n.name}>
+                    {n.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {keywords.length ? (
+              <div className="flex flex-wrap gap-1">
+                {keywords.map((k) => (
+                  <span
+                    key={k}
+                    className="border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground"
+                  >
+                    {k}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Nenhuma palavra-chave definida para este nicho.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
