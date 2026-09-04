@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 type Body = {
-  stage: "pesquisar" | "criar" | "revisar" | "postar";
+  stage: "pesquisar" | "criar" | "revisar" | "postar" | "pacote";
   topic?: string;
   niche?: string;
   research?: string;
@@ -53,6 +53,16 @@ Responda JSON:
 ${kw(b)}
 Conteúdo atual: ${JSON.stringify(b.slides)}
 Responda JSON: {"slides":[{"kicker":string,"title":string,"body":string}], "notas": string[3]}`,
+      };
+    case "pacote":
+      return {
+        system: base,
+        user: `AGENTE DE PACOTE DE CARDS PRONTOS PARA VENDER. Nicho: "${b.niche}". Ideia do cliente: "${b.topic}".
+${kw(b)}
+Crie ${b.slideCount || 8} CARDS INDEPENDENTES (cada um é um post avulso que pode ser vendido separadamente), variando os ângulos: dor, dica prática, mito x verdade, bastidores, prova social, oferta, autoridade e CTA.
+Use **asteriscos duplos** em 1 a 3 palavras do título e //barras duplas// em 1 palavra em alguns cards (colagem inclinada).
+Responda JSON:
+{"cards":[{"kicker": string curto (máx 3 palavras), "title": string (máx 8 palavras), "body": string (até 140 caracteres), "angulo": string curto, "legenda": string (legenda pronta), "hashtags": string[5]}]}`,
       };
     case "postar":
       return {
