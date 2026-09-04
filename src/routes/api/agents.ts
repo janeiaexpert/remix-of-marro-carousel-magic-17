@@ -7,9 +7,17 @@ type Body = {
   research?: string;
   slides?: unknown;
   slideCount?: number;
+  keywords?: string[];
 };
 
 const MODEL = "google/gemini-3.6-flash";
+
+function kw(b: Body) {
+  const list = (b.keywords || []).filter(Boolean);
+  return list.length
+    ? `PALAVRAS-CHAVE OBRIGATÓRIAS do nicho (distribua naturalmente nos títulos, no corpo, na legenda e nas hashtags): ${list.join(", ")}.`
+    : "";
+}
 
 function promptFor(b: Body): { system: string; user: string } {
   const base = `Você é um time de agentes de conteúdo para Instagram no Brasil. Responda SEMPRE em português do Brasil e SEMPRE em JSON válido, sem markdown, sem crases.`;
@@ -19,6 +27,7 @@ function promptFor(b: Body): { system: string; user: string } {
       return {
         system: base,
         user: `AGENTE PESQUISADOR. Nicho: "${b.niche}". Tema: "${b.topic}".
+${kw(b)}
 Pesquise mentalmente ângulos, dores, objeções e dados plausíveis.
 Responda JSON: {"resumo": string (até 400 caracteres), "angulos": string[5], "palavrasChave": string[6]}`,
       };
@@ -27,6 +36,7 @@ Responda JSON: {"resumo": string (até 400 caracteres), "angulos": string[5], "p
         system: base,
         user: `AGENTE CRIADOR. Nicho: "${b.niche}". Tema: "${b.topic}".
 Pesquisa: ${b.research || "(sem pesquisa)"}
+${kw(b)}
 Crie um carrossel de ${b.slideCount || 6} cards. O card 1 é CAPA estilo revista (headline curtíssima e impactante, máx 6 palavras).
 Use **asteriscos duplos** ao redor de 1 a 3 palavras-chave que devem ser marcadas em cada título.
 Use //barras duplas// ao redor de 1 palavra por card (em alguns cards, não em todos) para virar uma palavra inclinada estilo colagem de revista. Nunca use as duas marcações na mesma palavra.
@@ -40,6 +50,7 @@ Responda JSON:
       return {
         system: base,
         user: `AGENTE REVISOR. Revise ortografia, corte gordura, aumente clareza e força de copy. Mantenha a MESMA estrutura e quantidade de slides. Mantenha as marcações **palavra** e //palavra//.
+${kw(b)}
 Conteúdo atual: ${JSON.stringify(b.slides)}
 Responda JSON: {"slides":[{"kicker":string,"title":string,"body":string}], "notas": string[3]}`,
       };
@@ -47,6 +58,7 @@ Responda JSON: {"slides":[{"kicker":string,"title":string,"body":string}], "nota
       return {
         system: base,
         user: `AGENTE DE PUBLICAÇÃO. Com base nos cards: ${JSON.stringify(b.slides)} e no nicho "${b.niche}".
+${kw(b)}
 Responda JSON: {"legenda": string (copy pronta para o Instagram, com CTA e quebras de linha), "hashtags": string[10], "melhorHorario": string, "primeiroComentario": string}`,
       };
   }

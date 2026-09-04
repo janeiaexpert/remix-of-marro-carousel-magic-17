@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NichosRouteImport } from './routes/nichos'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
@@ -17,6 +18,11 @@ import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NichosRoute = NichosRouteImport.update({
+  id: '/nichos',
+  path: '/nichos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAgentsRoute = ApiAgentsRouteImport.update({
@@ -37,12 +43,14 @@ const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/nichos': typeof NichosRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/nichos': typeof NichosRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/transcribe': typeof ApiTranscribeRoute
@@ -50,21 +58,30 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/nichos': typeof NichosRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/transcribe': typeof ApiTranscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/agents' | '/api/generate-image' | '/api/transcribe'
+  fullPaths:
+    '/' | '/nichos' | '/api/agents' | '/api/generate-image' | '/api/transcribe'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/agents' | '/api/generate-image' | '/api/transcribe'
+  to:
+    '/' | '/nichos' | '/api/agents' | '/api/generate-image' | '/api/transcribe'
   id:
-    '__root__' | '/' | '/api/agents' | '/api/generate-image' | '/api/transcribe'
+    | '__root__'
+    | '/'
+    | '/nichos'
+    | '/api/agents'
+    | '/api/generate-image'
+    | '/api/transcribe'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NichosRoute: typeof NichosRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
@@ -77,6 +94,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nichos': {
+      id: '/nichos'
+      path: '/nichos'
+      fullPath: '/nichos'
+      preLoaderRoute: typeof NichosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/agents': {
@@ -105,6 +129,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NichosRoute: NichosRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
