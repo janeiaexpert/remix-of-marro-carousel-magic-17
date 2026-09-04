@@ -162,6 +162,7 @@ function Index() {
   const [recording, setRecording] = useState(false);
   const [voiceStep, setVoiceStep] = useState("");
   const recorderRef = useRef<VoiceRecorder | null>(null);
+  const [previewW, setPreviewW] = useState(300);
 
   useEffect(() => {
     const fit = () => setPreviewW(Math.max(220, Math.min(300, window.innerWidth - 72)));
@@ -183,7 +184,6 @@ function Index() {
 
   const theme = custom ?? THEMES[themeIdx]!.theme;
   const cardH = RATIOS[ratio].h;
-  const [previewW, setPreviewW] = useState(300);
   const previewH = Math.round((previewW / CARD_W) * cardH);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
